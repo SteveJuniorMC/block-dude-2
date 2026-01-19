@@ -4,8 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -106,25 +105,22 @@ fun GameCanvas(
         }
     }
 
-    // Use viewport width for aspect ratio calculation, not full level width
     val viewportWidth = minOf(level.viewportWidth, level.width)
-    val aspectRatio = viewportWidth.toFloat() / level.height.toFloat()
 
     Canvas(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(aspectRatio)
+        modifier = modifier.fillMaxSize()
     ) {
-        // Fill entire canvas - no borders
+        // Fill entire screen width
         val cellSize = size.width / viewportWidth
+        val arenaHeight = cellSize * level.height
         val offsetX = 0f
-        val offsetY = (size.height - cellSize * level.height) / 2
+        val offsetY = (size.height - arenaHeight) / 2
 
         // Draw background across full width
         drawRect(
             color = GroundColor,
             topLeft = Offset(0f, offsetY),
-            size = Size(size.width, cellSize * level.height)
+            size = Size(size.width, arenaHeight)
         )
 
         val viewportStartFloat = animatedViewportOffset.value
@@ -178,7 +174,7 @@ fun GameCanvas(
             drawRect(
                 color = Color(0x99000000),
                 topLeft = Offset(0f, offsetY),
-                size = Size(size.width, cellSize * level.height)
+                size = Size(size.width, arenaHeight)
             )
         }
     }
