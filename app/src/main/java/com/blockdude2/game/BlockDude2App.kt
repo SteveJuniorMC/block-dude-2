@@ -77,6 +77,7 @@ fun BlockDude2App(
                         onMoveUp = viewModel::moveUp,
                         onAction = viewModel::pickUpOrPlace,
                         onRestart = viewModel::restartLevel,
+                        onEnemyTick = viewModel::tickEnemies,
                         onBack = {
                             navController.navigate(Screen.LevelSelect.route) {
                                 popUpTo(Screen.MainMenu.route)

@@ -1,6 +1,7 @@
 package com.blockdude2.game.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
@@ -24,8 +25,7 @@ import com.blockdude2.game.ui.theme.*
 
 data class AnimatedEnemy(
     val x: Animatable<Float, *>,
-    val y: Animatable<Float, *>,
-    val facing: Direction
+    val y: Animatable<Float, *>
 )
 
 @Composable
@@ -33,6 +33,7 @@ fun GameCanvas(
     level: Level,
     gameState: GameState,
     gameEngine: GameEngine,
+    onEnemyTick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val animatedPlayerX = remember { Animatable(gameState.playerPosition.x.toFloat()) }
@@ -44,8 +45,7 @@ fun GameCanvas(
         gameState.enemies.map { enemy ->
             AnimatedEnemy(
                 x = Animatable(enemy.position.x.toFloat()),
-                y = Animatable(enemy.position.y.toFloat()),
-                facing = enemy.facing
+                y = Animatable(enemy.position.y.toFloat())
             )
         }
     }
@@ -71,24 +71,35 @@ fun GameCanvas(
         )
     }
 
-    // Animate enemies smoothly
+    // Animate enemies and trigger next move when animation completes
     LaunchedEffect(gameState.enemies) {
-        gameState.enemies.forEachIndexed { index, enemy ->
+        if (gameState.levelCompleted || gameState.gameOver) return@LaunchedEffect
+
+        // Animate all enemies to their new positions
+        val jobs = gameState.enemies.mapIndexedNotNull { index, enemy ->
             if (index < animatedEnemies.size) {
                 launch {
-                    animatedEnemies[index].x.animateTo(
-                        targetValue = enemy.position.x.toFloat(),
-                        animationSpec = tween(150)
-                    )
+                    launch {
+                        animatedEnemies[index].x.animateTo(
+                            targetValue = enemy.position.x.toFloat(),
+                            animationSpec = tween(300, easing = LinearEasing)
+                        )
+                    }
+                    launch {
+                        animatedEnemies[index].y.animateTo(
+                            targetValue = enemy.position.y.toFloat(),
+                            animationSpec = tween(300, easing = LinearEasing)
+                        )
+                    }
                 }
-                launch {
-                    animatedEnemies[index].y.animateTo(
-                        targetValue = enemy.position.y.toFloat(),
-                        animationSpec = tween(150)
-                    )
-                }
-            }
+            } else null
         }
+
+        // Wait for all animations to complete
+        jobs.forEach { it.join() }
+
+        // Trigger next enemy move
+        onEnemyTick()
     }
 
     // Use viewport width for aspect ratio calculation, not full level width

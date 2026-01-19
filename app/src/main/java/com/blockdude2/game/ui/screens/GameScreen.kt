@@ -33,6 +33,7 @@ fun GameScreen(
     onMoveUp: () -> Unit,
     onAction: () -> Unit,
     onRestart: () -> Unit,
+    onEnemyTick: () -> Unit,
     onBack: () -> Unit,
     onNextLevel: () -> Unit,
     hasNextLevel: Boolean
@@ -61,7 +62,8 @@ fun GameScreen(
                     GameCanvas(
                         level = level,
                         gameState = gameState,
-                        gameEngine = gameEngine
+                        gameEngine = gameEngine,
+                        onEnemyTick = onEnemyTick
                     )
                 }
 
