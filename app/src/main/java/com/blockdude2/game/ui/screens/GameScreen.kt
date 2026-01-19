@@ -126,14 +126,14 @@ private fun GameOverOverlay(
                 .padding(scaledDp(24))
         ) {
             Text(
-                text = "GAME",
+                text = "YOU",
                 color = TextWhite,
                 fontSize = scaledSp(12),
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(scaledDp(6)))
             Text(
-                text = "OVER",
+                text = "DIED",
                 color = AccentOrange,
                 fontSize = scaledSp(16),
                 fontWeight = FontWeight.Bold,
