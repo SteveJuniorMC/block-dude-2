@@ -90,6 +90,71 @@ fun GameScreen(
                     hasNextLevel = hasNextLevel
                 )
             }
+
+            // Game over overlay
+            AnimatedVisibility(
+                visible = gameState.gameOver,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                GameOverOverlay(
+                    onRestart = onRestart,
+                    onBack = onBack
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameOverOverlay(
+    onRestart: () -> Unit,
+    onBack: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.8f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(scaledDp(24))
+                .clip(RoundedCornerShape(scaledDp(12)))
+                .background(SurfaceColor)
+                .padding(scaledDp(24))
+        ) {
+            Text(
+                text = "GAME",
+                color = TextWhite,
+                fontSize = scaledSp(12),
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(scaledDp(6)))
+            Text(
+                text = "OVER",
+                color = AccentOrange,
+                fontSize = scaledSp(16),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = scaledSp(2)
+            )
+
+            Spacer(modifier = Modifier.height(scaledDp(18)))
+
+            OverlayButton(
+                text = "RETRY",
+                color = AccentOrange,
+                onClick = onRestart
+            )
+
+            Spacer(modifier = Modifier.height(scaledDp(6)))
+
+            OverlayButton(
+                text = "LEVELS",
+                color = PrimaryBlue,
+                onClick = onBack
+            )
         }
     }
 }
