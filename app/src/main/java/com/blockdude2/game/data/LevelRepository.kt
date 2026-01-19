@@ -66,27 +66,27 @@ object LevelRepository {
                 "GgggggGgGGGgGGGgGGGGGgggGGGGggGG"
             )
         ),
-        // Level 2 - The Climb
+        // Level 2
         Level.fromGrid(
             id = 2,
-            name = "The Climb",
+            name = "Level 2",
             grid = listOf(
-                "                                        ",
-                "                                        ",
-                "                                        ",
-                "                                        ",
-                "                                        ",
-                "                                        ",
-                "                                       D",
-                "                                      ##",
-                "                                B    ###",
-                "                    B          ##   ####",
-                "             E     ##  B      ###  #####",
-                "   B    B   gg    ###  #  E  ####  #####",
-                "  ##   ##  gGGg  ####  ##   #####  #####",
-                " ###  ###  GGGG #####  ###  #####  #####",
-                " P##  ###  GGGG #####  ###  #####  #####",
-                "gGGGggGGGggGGGGgGGGGGggGGGggGGGGGggGGGGG"
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                              E ",
+                "                          ######",
+                " E                              ",
+                "#####                           ",
+                "                        # #     ",
+                "             #         ## #     ",
+                "  P       B  #       ######    D",
+                "  B   #  BB  #   EBB ###########",
+                "GgGGGGggGGGgGGGgGGGGGgGggGgGGggg"
             )
         )
     )
