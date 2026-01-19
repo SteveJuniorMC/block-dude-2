@@ -71,35 +71,38 @@ fun GameCanvas(
         )
     }
 
-    // Animate enemies and trigger next move when animation completes
-    LaunchedEffect(gameState.enemies) {
-        if (gameState.levelCompleted || gameState.gameOver) return@LaunchedEffect
+    // Continuous enemy movement - runs as long as game is active
+    LaunchedEffect(Unit) {
+        while (true) {
+            // Wait a frame for state to be ready
+            kotlinx.coroutines.delay(16)
 
-        // Animate all enemies to their new positions
-        val jobs = gameState.enemies.mapIndexedNotNull { index, enemy ->
+            // Trigger enemy movement logic
+            onEnemyTick()
+
+            // Animate to new positions (300ms smooth movement)
+            kotlinx.coroutines.delay(300)
+        }
+    }
+
+    // Animate enemies when their positions change
+    LaunchedEffect(gameState.enemies) {
+        gameState.enemies.forEachIndexed { index, enemy ->
             if (index < animatedEnemies.size) {
                 launch {
-                    launch {
-                        animatedEnemies[index].x.animateTo(
-                            targetValue = enemy.position.x.toFloat(),
-                            animationSpec = tween(300, easing = LinearEasing)
-                        )
-                    }
-                    launch {
-                        animatedEnemies[index].y.animateTo(
-                            targetValue = enemy.position.y.toFloat(),
-                            animationSpec = tween(300, easing = LinearEasing)
-                        )
-                    }
+                    animatedEnemies[index].x.animateTo(
+                        targetValue = enemy.position.x.toFloat(),
+                        animationSpec = tween(280, easing = LinearEasing)
+                    )
                 }
-            } else null
+                launch {
+                    animatedEnemies[index].y.animateTo(
+                        targetValue = enemy.position.y.toFloat(),
+                        animationSpec = tween(280, easing = LinearEasing)
+                    )
+                }
+            }
         }
-
-        // Wait for all animations to complete
-        jobs.forEach { it.join() }
-
-        // Trigger next enemy move
-        onEnemyTick()
     }
 
     // Use viewport width for aspect ratio calculation, not full level width
