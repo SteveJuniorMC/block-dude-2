@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,17 @@ fun GameScreen(
     onNextLevel: () -> Unit,
     hasNextLevel: Boolean
 ) {
+    // Delay game over modal to let death animation play
+    var showGameOverModal by remember { mutableStateOf(false) }
+    LaunchedEffect(gameState.gameOver) {
+        if (gameState.gameOver) {
+            delay(600) // Wait for death particle animation
+            showGameOverModal = true
+        } else {
+            showGameOverModal = false
+        }
+    }
+
     ScaledContainer(backgroundColor = DarkBackground) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -91,9 +103,9 @@ fun GameScreen(
                 )
             }
 
-            // Game over overlay
+            // Game over overlay (delayed to let death animation play)
             AnimatedVisibility(
-                visible = gameState.gameOver,
+                visible = showGameOverModal,
                 enter = fadeIn() + scaleIn(),
                 exit = fadeOut() + scaleOut()
             ) {
