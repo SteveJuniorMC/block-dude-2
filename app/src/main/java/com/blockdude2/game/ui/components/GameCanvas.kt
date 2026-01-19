@@ -65,6 +65,10 @@ fun GameCanvas(
     val particles = remember { mutableStateListOf<SquishParticle>() }
     val particleProgress = remember { Animatable(0f) }
 
+    // Death particles
+    val deathParticles = remember { mutableStateListOf<SquishParticle>() }
+    val deathParticleProgress = remember { Animatable(0f) }
+
     // Create particles when enemy is squished
     LaunchedEffect(gameState.squishedEnemyPositions) {
         if (gameState.squishedEnemyPositions.isNotEmpty()) {
@@ -89,6 +93,31 @@ fun GameCanvas(
             particleProgress.snapTo(0f)
             particleProgress.animateTo(1f, animationSpec = tween(400))
             particles.clear()
+        }
+    }
+
+    // Create particles when player dies
+    LaunchedEffect(gameState.gameOver) {
+        if (gameState.gameOver) {
+            deathParticles.clear()
+            val pos = gameState.playerPosition
+            // Create 16 white particles for player death
+            repeat(16) {
+                val angle = Random.nextFloat() * 2 * Math.PI.toFloat()
+                val speed = Random.nextFloat() * 4f + 2f
+                deathParticles.add(
+                    SquishParticle(
+                        x = pos.x + 0.5f,
+                        y = pos.y + 0.5f,
+                        vx = kotlin.math.cos(angle) * speed,
+                        vy = kotlin.math.sin(angle) * speed - 3f,
+                        color = Color.White,
+                        size = Random.nextFloat() * 0.25f + 0.1f
+                    )
+                )
+            }
+            deathParticleProgress.snapTo(0f)
+            deathParticleProgress.animateTo(1f, animationSpec = tween(500))
         }
     }
 
@@ -200,10 +229,12 @@ fun GameCanvas(
             }
         }
 
-        // Draw player with animation (adjusted for viewport)
+        // Draw player with animation (adjusted for viewport) - hide when dead
         val playerX = offsetX + (animatedPlayerX.value - viewportStartFloat) * cellSize
         val playerY = offsetY + animatedPlayerY.value * cellSize
-        drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
+        if (!gameState.gameOver) {
+            drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
+        }
 
         // Draw squish particles
         val progress = particleProgress.value
@@ -213,6 +244,22 @@ fun GameCanvas(
                 val px = offsetX + (particle.x + particle.vx * progress - viewportStartFloat) * cellSize
                 val py = offsetY + (particle.y + particle.vy * progress + progress * progress * 4f) * cellSize
                 val pSize = particle.size * cellSize * (1f - progress * 0.5f)
+                drawCircle(
+                    color = particle.color.copy(alpha = alpha),
+                    radius = pSize,
+                    center = Offset(px, py)
+                )
+            }
+        }
+
+        // Draw death particles
+        val deathProgress = deathParticleProgress.value
+        if (deathParticles.isNotEmpty()) {
+            val alpha = 1f - deathProgress
+            deathParticles.forEach { particle ->
+                val px = offsetX + (particle.x + particle.vx * deathProgress - viewportStartFloat) * cellSize
+                val py = offsetY + (particle.y + particle.vy * deathProgress + deathProgress * deathProgress * 5f) * cellSize
+                val pSize = particle.size * cellSize * (1f - deathProgress * 0.5f)
                 drawCircle(
                     color = particle.color.copy(alpha = alpha),
                     radius = pSize,
