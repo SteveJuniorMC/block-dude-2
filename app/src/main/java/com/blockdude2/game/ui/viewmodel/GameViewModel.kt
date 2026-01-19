@@ -64,7 +64,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         enemyTickJob?.cancel()
         enemyTickJob = viewModelScope.launch {
             while (true) {
-                delay(600) // Enemies move every 600ms
+                delay(350) // Enemies move every 350ms for smoother movement
                 val state = _gameState.value ?: continue
                 val engine = gameEngine ?: continue
                 if (state.levelCompleted || state.gameOver) break
