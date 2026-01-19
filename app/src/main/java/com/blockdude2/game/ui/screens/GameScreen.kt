@@ -51,13 +51,12 @@ fun GameScreen(
                     onBack = onBack
                 )
 
-                // Game area
+                // Game area - no padding for full width
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .padding(scaledDp(12)),
-                    contentAlignment = Alignment.TopCenter
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
                     GameCanvas(
                         level = level,
