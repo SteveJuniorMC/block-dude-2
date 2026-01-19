@@ -9,6 +9,8 @@ import com.blockdude2.game.data.Level
 import com.blockdude2.game.data.LevelRepository
 import com.blockdude2.game.data.ProgressDataStore
 import com.blockdude2.game.game.GameEngine
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
 
     private var gameEngine: GameEngine? = null
+    private var enemyTickJob: Job? = null
 
     init {
         _levels = LevelRepository.getAllLevels(application)
@@ -54,6 +57,31 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _currentLevel.value = level
         gameEngine = GameEngine(level)
         _gameState.value = gameEngine?.createInitialState()
+        startEnemyTick()
+    }
+
+    private fun startEnemyTick() {
+        enemyTickJob?.cancel()
+        enemyTickJob = viewModelScope.launch {
+            while (true) {
+                delay(600) // Enemies move every 600ms
+                val state = _gameState.value ?: continue
+                val engine = gameEngine ?: continue
+                if (state.levelCompleted || state.gameOver) break
+                val newState = engine.tickEnemies(state)
+                if (newState != state) {
+                    _gameState.value = newState
+                    if (newState.gameOver) {
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopEnemyTick() {
+        enemyTickJob?.cancel()
+        enemyTickJob = null
     }
 
     fun startNextAvailableLevel() {
@@ -112,6 +140,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun restartLevel() {
         _gameState.value = gameEngine?.createInitialState()
+        startEnemyTick()
     }
 
     fun goToNextLevel() {
@@ -139,6 +168,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        stopEnemyTick()
         soundManager.release()
     }
 }

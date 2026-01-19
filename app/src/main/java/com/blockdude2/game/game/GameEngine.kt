@@ -25,20 +25,20 @@ class GameEngine(private val level: Level) {
     fun moveLeft(state: GameState): GameState {
         if (state.levelCompleted || state.gameOver) return state
         val newState = state.copy(playerFacing = Direction.LEFT, moves = state.moves + 1)
-        return tryMove(newState, -1).let { moveEnemies(it) }.let { checkEnemyCollision(it) }
+        return tryMove(newState, -1).let { checkEnemyCollision(it) }
     }
 
     fun moveRight(state: GameState): GameState {
         if (state.levelCompleted || state.gameOver) return state
         val newState = state.copy(playerFacing = Direction.RIGHT, moves = state.moves + 1)
-        return tryMove(newState, 1).let { moveEnemies(it) }.let { checkEnemyCollision(it) }
+        return tryMove(newState, 1).let { checkEnemyCollision(it) }
     }
 
     fun moveUp(state: GameState): GameState {
         if (state.levelCompleted || state.gameOver) return state
         val dx = if (state.playerFacing == Direction.LEFT) -1 else 1
         val newState = state.copy(moves = state.moves + 1)
-        return tryClimb(newState, dx).let { moveEnemies(it) }.let { checkEnemyCollision(it) }
+        return tryClimb(newState, dx).let { checkEnemyCollision(it) }
     }
 
     private fun tryClimb(state: GameState, dx: Int): GameState {
@@ -92,7 +92,7 @@ class GameEngine(private val level: Level) {
         } else {
             pickUpBlock(state)
         }
-        return moveEnemies(result).let { checkEnemyCollision(it) }
+        return checkEnemyCollision(result)
     }
 
     private fun pickUpBlock(state: GameState): GameState {
@@ -179,6 +179,12 @@ class GameEngine(private val level: Level) {
         }
 
         return state.copy(playerPosition = currentPos)
+    }
+
+    // Public method for timer-based enemy movement
+    fun tickEnemies(state: GameState): GameState {
+        if (state.levelCompleted || state.gameOver) return state
+        return moveEnemies(state).let { checkEnemyCollision(it) }
     }
 
     // Enemy AI - move towards player when within 10 blocks
