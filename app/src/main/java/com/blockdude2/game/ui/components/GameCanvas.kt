@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -74,13 +75,13 @@ fun GameCanvas(
     LaunchedEffect(gameState.enemies) {
         gameState.enemies.forEachIndexed { index, enemy ->
             if (index < animatedEnemies.size) {
-                kotlinx.coroutines.launch {
+                launch {
                     animatedEnemies[index].x.animateTo(
                         targetValue = enemy.position.x.toFloat(),
                         animationSpec = tween(150)
                     )
                 }
-                kotlinx.coroutines.launch {
+                launch {
                     animatedEnemies[index].y.animateTo(
                         targetValue = enemy.position.y.toFloat(),
                         animationSpec = tween(150)
