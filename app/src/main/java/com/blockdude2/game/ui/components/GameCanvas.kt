@@ -21,6 +21,12 @@ import com.blockdude2.game.game.Direction
 import com.blockdude2.game.game.GameEngine
 import com.blockdude2.game.ui.theme.*
 
+data class AnimatedEnemy(
+    val x: Animatable<Float, *>,
+    val y: Animatable<Float, *>,
+    val facing: Direction
+)
+
 @Composable
 fun GameCanvas(
     level: Level,
@@ -31,6 +37,17 @@ fun GameCanvas(
     val animatedPlayerX = remember { Animatable(gameState.playerPosition.x.toFloat()) }
     val animatedPlayerY = remember { Animatable(gameState.playerPosition.y.toFloat()) }
     val animatedViewportOffset = remember { Animatable(gameEngine.getViewportOffset(gameState).toFloat()) }
+
+    // Animated enemy positions
+    val animatedEnemies = remember(gameState.enemies.size) {
+        gameState.enemies.map { enemy ->
+            AnimatedEnemy(
+                x = Animatable(enemy.position.x.toFloat()),
+                y = Animatable(enemy.position.y.toFloat()),
+                facing = enemy.facing
+            )
+        }
+    }
 
     LaunchedEffect(gameState.playerPosition) {
         animatedPlayerX.animateTo(
@@ -51,6 +68,26 @@ fun GameCanvas(
             targetValue = gameEngine.getViewportOffset(gameState).toFloat(),
             animationSpec = tween(150)
         )
+    }
+
+    // Animate enemies smoothly
+    LaunchedEffect(gameState.enemies) {
+        gameState.enemies.forEachIndexed { index, enemy ->
+            if (index < animatedEnemies.size) {
+                kotlinx.coroutines.launch {
+                    animatedEnemies[index].x.animateTo(
+                        targetValue = enemy.position.x.toFloat(),
+                        animationSpec = tween(150)
+                    )
+                }
+                kotlinx.coroutines.launch {
+                    animatedEnemies[index].y.animateTo(
+                        targetValue = enemy.position.y.toFloat(),
+                        animationSpec = tween(150)
+                    )
+                }
+            }
+        }
     }
 
     // Use viewport width for aspect ratio calculation, not full level width
@@ -76,36 +113,50 @@ fun GameCanvas(
             size = Size(cellSize * viewportWidth, cellSize * level.height)
         )
 
-        val viewportStart = animatedViewportOffset.value.toInt()
-        val viewportEnd = viewportStart + viewportWidth
+        // Render extra cells on each side to prevent gaps during scroll animation
+        val viewportStartFloat = animatedViewportOffset.value
+        val viewportStartInt = kotlin.math.floor(viewportStartFloat).toInt()
+        val viewportEndInt = kotlin.math.ceil(viewportStartFloat).toInt() + viewportWidth + 1
 
-        // Draw all visible cells (within viewport)
+        // Draw all visible cells (within extended viewport)
         for (y in 0 until level.height) {
-            for (x in viewportStart until minOf(viewportEnd, level.width)) {
+            for (x in maxOf(0, viewportStartInt) until minOf(viewportEndInt, level.width)) {
                 val cellInfo = gameEngine.getCellAt(x, y, gameState)
-                val cellX = offsetX + (x - animatedViewportOffset.value) * cellSize
+                val cellX = offsetX + (x - viewportStartFloat) * cellSize
                 val cellY = offsetY + y * cellSize
+
+                // Skip if outside visible area
+                if (cellX + cellSize < offsetX || cellX > offsetX + viewportWidth * cellSize) continue
 
                 when (cellInfo) {
                     is CellInfo.Wall -> drawWall(cellX, cellY, cellSize)
                     is CellInfo.Block -> drawBlock(cellX, cellY, cellSize)
                     is CellInfo.Door -> drawDoor(cellX, cellY, cellSize)
                     is CellInfo.Terrain -> drawTerrain(cellX, cellY, cellSize, cellInfo.type)
-                    is CellInfo.Enemy -> drawEnemy(cellX, cellY, cellSize, cellInfo.facing)
+                    is CellInfo.Enemy -> {} // Draw separately for animation
                     is CellInfo.Empty -> {} // Already have background
                     is CellInfo.Player -> {} // Draw separately for animation
                 }
             }
         }
 
+        // Draw enemies with smooth animation
+        gameState.enemies.forEachIndexed { index, enemy ->
+            if (index < animatedEnemies.size) {
+                val enemyX = offsetX + (animatedEnemies[index].x.value - viewportStartFloat) * cellSize
+                val enemyY = offsetY + animatedEnemies[index].y.value * cellSize
+                drawEnemy(enemyX, enemyY, cellSize, enemy.facing)
+            }
+        }
+
         // Draw player with animation (adjusted for viewport)
-        val playerX = offsetX + (animatedPlayerX.value - animatedViewportOffset.value) * cellSize
+        val playerX = offsetX + (animatedPlayerX.value - viewportStartFloat) * cellSize
         val playerY = offsetY + animatedPlayerY.value * cellSize
         drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
 
         // Draw door on top if player is at door (for win effect)
         if (gameState.levelCompleted) {
-            val doorX = offsetX + (level.doorPosition.x - animatedViewportOffset.value) * cellSize
+            val doorX = offsetX + (level.doorPosition.x - viewportStartFloat) * cellSize
             val doorY = offsetY + level.doorPosition.y * cellSize
             drawDoorOpen(doorX, doorY, cellSize)
         }
