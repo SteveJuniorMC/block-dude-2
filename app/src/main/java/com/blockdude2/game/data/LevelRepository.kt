@@ -65,6 +65,29 @@ object LevelRepository {
                 "   B P ###B  B#    #  E  B  ####",
                 "GgggggGgGGGgGGGgGGGGGgggGGGGggGG"
             )
+        ),
+        // Level 2 - The Climb
+        Level.fromGrid(
+            id = 2,
+            name = "The Climb",
+            grid = listOf(
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                       D",
+                "                                      ##",
+                "                                B    ###",
+                "                    B          ##   ####",
+                "             E     ##  B      ###  #####",
+                "   B    B   gg    ###  #  E  ####  #####",
+                "  ##   ##  gGGg  ####  ##   #####  #####",
+                " ###  ###  GGGG #####  ###  #####  #####",
+                " P##  ###  GGGG #####  ###  #####  #####",
+                "gGGGggGGGggGGGGgGGGGGggGGGggGGGGGggGGGGG"
+            )
         )
     )
 }
