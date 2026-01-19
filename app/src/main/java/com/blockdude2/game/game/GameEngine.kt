@@ -158,11 +158,18 @@ class GameEngine(private val level: Level) {
             finalPos = below
         }
 
+        // Check for enemies at the final block position - squish them!
+        val squishedEnemies = state.enemies.filter { it.position == finalPos }
+        val remainingEnemies = state.enemies.filter { it.position != finalPos }
+        val squishedPositions = squishedEnemies.map { it.position }
+
         val newBlocks = state.blocks.toMutableSet()
         newBlocks.add(finalPos)
         return state.copy(
             holdingBlock = false,
             blocks = newBlocks,
+            enemies = remainingEnemies,
+            squishedEnemyPositions = squishedPositions,
             moves = state.moves + 1
         )
     }

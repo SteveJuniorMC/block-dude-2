@@ -15,6 +15,7 @@ data class GameState(
     val holdingBlock: Boolean = false,
     val blocks: Set<Position>,
     val enemies: List<Enemy>,
+    val squishedEnemyPositions: List<Position> = emptyList(),
     val levelCompleted: Boolean = false,
     val gameOver: Boolean = false,
     val moves: Int = 0

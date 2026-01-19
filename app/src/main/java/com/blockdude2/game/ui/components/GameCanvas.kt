@@ -7,8 +7,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -25,6 +28,15 @@ import com.blockdude2.game.ui.theme.*
 data class AnimatedEnemy(
     val x: Animatable<Float, *>,
     val y: Animatable<Float, *>
+)
+
+data class SquishParticle(
+    val x: Float,
+    val y: Float,
+    val vx: Float,
+    val vy: Float,
+    val color: Color,
+    val size: Float
 )
 
 @Composable
@@ -46,6 +58,37 @@ fun GameCanvas(
                 x = Animatable(enemy.position.x.toFloat()),
                 y = Animatable(enemy.position.y.toFloat())
             )
+        }
+    }
+
+    // Squish particles
+    val particles = remember { mutableStateListOf<SquishParticle>() }
+    val particleProgress = remember { Animatable(0f) }
+
+    // Create particles when enemy is squished
+    LaunchedEffect(gameState.squishedEnemyPositions) {
+        if (gameState.squishedEnemyPositions.isNotEmpty()) {
+            particles.clear()
+            gameState.squishedEnemyPositions.forEach { pos ->
+                // Create 12 particles per squished enemy
+                repeat(12) {
+                    val angle = Random.nextFloat() * 2 * Math.PI.toFloat()
+                    val speed = Random.nextFloat() * 3f + 1f
+                    particles.add(
+                        SquishParticle(
+                            x = pos.x + 0.5f,
+                            y = pos.y + 0.5f,
+                            vx = kotlin.math.cos(angle) * speed,
+                            vy = kotlin.math.sin(angle) * speed - 2f, // bias upward
+                            color = if (Random.nextBoolean()) EnemyColor else EnemyDarkColor,
+                            size = Random.nextFloat() * 0.2f + 0.1f
+                        )
+                    )
+                }
+            }
+            particleProgress.snapTo(0f)
+            particleProgress.animateTo(1f, animationSpec = tween(400))
+            particles.clear()
         }
     }
 
@@ -161,6 +204,22 @@ fun GameCanvas(
         val playerX = offsetX + (animatedPlayerX.value - viewportStartFloat) * cellSize
         val playerY = offsetY + animatedPlayerY.value * cellSize
         drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
+
+        // Draw squish particles
+        val progress = particleProgress.value
+        if (particles.isNotEmpty()) {
+            val alpha = 1f - progress
+            particles.forEach { particle ->
+                val px = offsetX + (particle.x + particle.vx * progress - viewportStartFloat) * cellSize
+                val py = offsetY + (particle.y + particle.vy * progress + progress * progress * 4f) * cellSize
+                val pSize = particle.size * cellSize * (1f - progress * 0.5f)
+                drawCircle(
+                    color = particle.color.copy(alpha = alpha),
+                    radius = pSize,
+                    center = Offset(px, py)
+                )
+            }
+        }
 
         // Draw door on top if player is at door (for win effect)
         if (gameState.levelCompleted) {
