@@ -19,6 +19,16 @@ val DoorColor = Color(0xFF95E1A3)
 val DoorFrame = Color(0xFF7BC88A)
 val GroundColor = Color(0xFF2D2D44)
 
+// Terrain colors
+val GrassColor = Color(0xFF4A8C32)
+val GrassVariantColor = Color(0xFF5A9C42)
+val DirtColor = Color(0xFF8B6914)
+val DirtVariantColor = Color(0xFF7B5904)
+
+// Enemy colors
+val EnemyColor = Color(0xFF9B59B6)
+val EnemyDarkColor = Color(0xFF7D3C98)
+
 // Level status colors
 val LockedColor = Color(0xFF666666)
 val UnlockedColor = Color(0xFFFFB347)

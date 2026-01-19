@@ -5,16 +5,26 @@ class LevelEditor {
         this.width = 32;  // Default wider for scrolling levels
         this.height = 16;
         this.grid = [];
-        this.currentTool = 'wall';
+        this.currentTool = 'grass';
         this.isDrawing = false;
         this.isPlayMode = false;
+
+        // Scroll vs draw detection
+        this.isPanning = false;
+        this.panStartX = 0;
+        this.panStartY = 0;
+        this.panStartScrollLeft = 0;
+        this.touchStartTime = 0;
+        this.touchMoved = false;
 
         // Play mode state
         this.playerPos = null;
         this.playerFacing = 'right';
         this.holdingBlock = false;
         this.blocks = new Set();
+        this.enemies = []; // Array of {x, y, facing}
         this.moves = 0;
+        this.gameOver = false;
 
         this.init();
     }
@@ -28,12 +38,7 @@ class LevelEditor {
 
     updateScrollInfo() {
         const info = document.getElementById('scrollInfo');
-        if (this.width > 20) {
-            info.textContent = `Level size: ${this.width}x${this.height} - Scroll horizontally to see full level`;
-            info.style.display = 'block';
-        } else {
-            info.style.display = 'none';
-        }
+        info.textContent = `${this.width}x${this.height} - Swipe to scroll, tap to place`;
     }
 
     createGrid() {
@@ -62,10 +67,11 @@ class LevelEditor {
     }
 
     addBorderWalls() {
-        // Only add top and bottom walls
+        // Only add terrain at the bottom with slight variance
         for (let x = 0; x < this.width; x++) {
-            this.setCell(x, 0, 'wall');
-            this.setCell(x, this.height - 1, 'wall');
+            // Random chance for grass variation (about 30%)
+            const terrainType = Math.random() < 0.3 ? 'grass2' : 'grass';
+            this.setCell(x, this.height - 1, terrainType);
         }
     }
 
@@ -120,7 +126,7 @@ class LevelEditor {
                 return;
             }
 
-            const shortcuts = { 'w': 'wall', 'b': 'block', 'p': 'player', 'd': 'door', 'e': 'erase' };
+            const shortcuts = { 'g': 'grass', 'w': 'wall', 'b': 'block', 'p': 'player', 'd': 'door', 's': 'enemy', 'e': 'erase' };
             if (shortcuts[e.key.toLowerCase()]) {
                 this.currentTool = shortcuts[e.key.toLowerCase()];
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
@@ -130,13 +136,39 @@ class LevelEditor {
 
         // Grid drawing
         const grid = document.getElementById('grid');
+        const container = document.getElementById('gridContainer');
+
         grid.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         grid.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        document.addEventListener('mouseup', () => this.isDrawing = false);
+        document.addEventListener('mouseup', () => {
+            this.isDrawing = false;
+            this.isPanning = false;
+            container.style.cursor = 'default';
+        });
 
-        // Touch support
-        grid.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        grid.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+        // Middle mouse button or shift+drag for panning
+        container.addEventListener('mousedown', (e) => {
+            if (e.button === 1 || e.shiftKey) { // Middle button or shift
+                e.preventDefault();
+                this.isPanning = true;
+                this.panStartX = e.clientX;
+                this.panStartScrollLeft = container.scrollLeft;
+                container.style.cursor = 'grabbing';
+            }
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (this.isPanning) {
+                e.preventDefault();
+                const dx = e.clientX - this.panStartX;
+                container.scrollLeft = this.panStartScrollLeft - dx;
+            }
+        });
+
+        // Touch support - swipe to scroll, tap to place
+        grid.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        grid.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        grid.addEventListener('touchend', (e) => this.handleTouchEnd(e));
 
         // Buttons
         document.getElementById('resizeBtn').addEventListener('click', () => this.resize());
@@ -158,6 +190,8 @@ class LevelEditor {
 
     handleMouseDown(e) {
         if (this.isPlayMode) return;
+        if (this.isPanning) return;
+        if (e.shiftKey || e.button !== 0) return; // Only left click without shift
         const cell = e.target.closest('.cell');
         if (cell) {
             this.isDrawing = true;
@@ -166,6 +200,7 @@ class LevelEditor {
     }
 
     handleMouseMove(e) {
+        if (this.isPanning) return;
         if (!this.isDrawing || this.isPlayMode) return;
         const cell = e.target.closest('.cell');
         if (cell) {
@@ -175,22 +210,54 @@ class LevelEditor {
 
     handleTouchStart(e) {
         if (this.isPlayMode) return;
-        e.preventDefault();
+        if (e.touches.length !== 1) return;
+
+        const container = document.getElementById('gridContainer');
         const touch = e.touches[0];
-        const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
-        if (cell) {
-            this.paintCell(cell);
-        }
+
+        this.panStartX = touch.clientX;
+        this.panStartY = touch.clientY;
+        this.panStartScrollLeft = container.scrollLeft;
+        this.touchStartTime = Date.now();
+        this.touchMoved = false;
+        this.isPanning = true;
     }
 
     handleTouchMove(e) {
         if (this.isPlayMode) return;
-        e.preventDefault();
+        if (!this.isPanning || e.touches.length !== 1) return;
+
+        const container = document.getElementById('gridContainer');
         const touch = e.touches[0];
-        const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
-        if (cell) {
-            this.paintCell(cell);
+        const dx = touch.clientX - this.panStartX;
+        const dy = touch.clientY - this.panStartY;
+
+        // If moved more than 10px, it's a scroll not a tap
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+            this.touchMoved = true;
         }
+
+        // Scroll horizontally
+        if (this.touchMoved) {
+            e.preventDefault();
+            container.scrollLeft = this.panStartScrollLeft - dx;
+        }
+    }
+
+    handleTouchEnd(e) {
+        if (this.isPlayMode) return;
+
+        // If didn't move much and was quick, treat as tap
+        const tapDuration = Date.now() - this.touchStartTime;
+        if (!this.touchMoved && tapDuration < 300) {
+            const cell = document.elementFromPoint(this.panStartX, this.panStartY)?.closest('.cell');
+            if (cell) {
+                this.paintCell(cell);
+            }
+        }
+
+        this.isPanning = false;
+        this.touchMoved = false;
     }
 
     paintCell(cell) {
@@ -245,19 +312,24 @@ class LevelEditor {
         if (doorCount === 0) errors.push('No door placed');
         if (doorCount > 1) errors.push('Multiple doors placed');
 
+        // Helper to check if ground is solid
+        const isSolidGround = (cell) => {
+            return cell === 'wall' || cell === 'block' || cell === 'grass' || cell === 'grass2';
+        };
+
         // Check player has ground
         if (playerPos) {
             const below = this.grid[playerPos.y + 1]?.[playerPos.x];
-            if (below !== 'wall' && below !== 'block') {
-                errors.push('Player must be standing on wall or block');
+            if (!isSolidGround(below)) {
+                errors.push('Player must be standing on solid ground');
             }
         }
 
         // Check door has ground
         if (doorPos) {
             const below = this.grid[doorPos.y + 1]?.[doorPos.x];
-            if (below !== 'wall' && below !== 'block') {
-                errors.push('Door must be on wall or block');
+            if (!isSolidGround(below)) {
+                errors.push('Door must be on solid ground');
             }
         }
 
@@ -276,9 +348,11 @@ class LevelEditor {
 
         this.isPlayMode = true;
         this.moves = 0;
+        this.gameOver = false;
 
-        // Find player and blocks
+        // Find player, blocks, and enemies
         this.blocks = new Set();
+        this.enemies = [];
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 if (this.grid[y][x] === 'player') {
@@ -286,6 +360,9 @@ class LevelEditor {
                 }
                 if (this.grid[y][x] === 'block') {
                     this.blocks.add(`${x},${y}`);
+                }
+                if (this.grid[y][x] === 'enemy') {
+                    this.enemies.push({ x, y, facing: 'left' });
                 }
             }
         }
@@ -345,8 +422,13 @@ class LevelEditor {
         }
     }
 
+    isSolid(x, y) {
+        const cell = this.grid[y]?.[x];
+        return cell === 'wall' || cell === 'grass' || cell === 'grass2';
+    }
+
     playMove(direction) {
-        if (!this.isPlayMode) return;
+        if (!this.isPlayMode || this.gameOver) return;
 
         if (direction === 'left' || direction === 'right') {
             this.playerFacing = direction;
@@ -357,10 +439,93 @@ class LevelEditor {
             this.pickOrPlace();
         }
 
+        // Move enemies after player moves
+        this.moveEnemies();
+
+        // Check for collision with enemies
+        this.checkEnemyCollision();
+
         this.checkWin();
         this.renderPlayState();
         this.updatePlayStatus();
         this.scrollToPlayer();
+    }
+
+    moveEnemies() {
+        for (const enemy of this.enemies) {
+            // Calculate distance to player
+            const dx = this.playerPos.x - enemy.x;
+            const dy = this.playerPos.y - enemy.y;
+            const distance = Math.abs(dx) + Math.abs(dy);
+
+            // Only move if within 10 blocks
+            if (distance > 10) continue;
+
+            // Determine direction to move
+            const moveDir = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+            if (moveDir === 0) continue;
+
+            enemy.facing = moveDir > 0 ? 'right' : 'left';
+
+            // Try to move horizontally
+            const newX = enemy.x + moveDir;
+
+            // Check bounds
+            if (newX < 0 || newX >= this.width) continue;
+
+            // Check collision with solid terrain
+            if (this.isSolid(newX, enemy.y)) {
+                // Try to climb up
+                const climbY = enemy.y - 1;
+                if (!this.isSolid(newX, climbY) && !this.blocks.has(`${newX},${climbY}`) && !this.isEnemyAt(newX, climbY)) {
+                    enemy.x = newX;
+                    enemy.y = climbY;
+                }
+                continue;
+            }
+
+            // Check collision with block
+            if (this.blocks.has(`${newX},${enemy.y}`)) {
+                // Try to climb up
+                const climbY = enemy.y - 1;
+                if (!this.isSolid(newX, climbY) && !this.blocks.has(`${newX},${climbY}`) && !this.isEnemyAt(newX, climbY)) {
+                    enemy.x = newX;
+                    enemy.y = climbY;
+                }
+                continue;
+            }
+
+            // Check collision with other enemies
+            if (this.isEnemyAt(newX, enemy.y)) continue;
+
+            // Move and apply gravity
+            enemy.x = newX;
+            this.applyEnemyGravity(enemy);
+        }
+    }
+
+    isEnemyAt(x, y) {
+        return this.enemies.some(e => e.x === x && e.y === y);
+    }
+
+    applyEnemyGravity(enemy) {
+        while (true) {
+            const belowY = enemy.y + 1;
+            if (belowY >= this.height) break;
+            if (this.isSolid(enemy.x, belowY)) break;
+            if (this.blocks.has(`${enemy.x},${belowY}`)) break;
+            enemy.y = belowY;
+        }
+    }
+
+    checkEnemyCollision() {
+        for (const enemy of this.enemies) {
+            if (enemy.x === this.playerPos.x && enemy.y === this.playerPos.y) {
+                this.gameOver = true;
+                this.showMessage('Game Over! Caught by a slug!', 'error');
+                return;
+            }
+        }
     }
 
     movePlayer(dx) {
@@ -370,8 +535,8 @@ class LevelEditor {
         // Check bounds
         if (newX < 0 || newX >= this.width) return;
 
-        // Check collision with wall
-        if (this.grid[newY][newX] === 'wall') return;
+        // Check collision with solid terrain
+        if (this.isSolid(newX, newY)) return;
 
         // Check collision with block (can't push blocks in Block Dude)
         if (this.blocks.has(`${newX},${newY}`)) return;
@@ -379,7 +544,7 @@ class LevelEditor {
         // If holding a block, check if there's space above target position
         if (this.holdingBlock) {
             const aboveNewY = newY - 1;
-            if (this.grid[aboveNewY]?.[newX] === 'wall') return;
+            if (this.isSolid(newX, aboveNewY)) return;
             if (this.blocks.has(`${newX},${aboveNewY}`)) return;
         }
 
@@ -396,11 +561,11 @@ class LevelEditor {
         const climbY = this.playerPos.y - 1;
 
         // Check if there's something to climb
-        const hasFrontObstacle = this.grid[this.playerPos.y][frontX] === 'wall' || this.blocks.has(`${frontX},${this.playerPos.y}`);
+        const hasFrontObstacle = this.isSolid(frontX, this.playerPos.y) || this.blocks.has(`${frontX},${this.playerPos.y}`);
         if (!hasFrontObstacle) return;
 
         // Check if climb position is clear
-        if (this.grid[climbY]?.[climbX] === 'wall') return;
+        if (this.isSolid(climbX, climbY)) return;
         if (this.blocks.has(`${climbX},${climbY}`)) return;
 
         // If holding block, check extra space above
@@ -408,10 +573,10 @@ class LevelEditor {
             const aboveClimbY = climbY - 1;
             const aboveCurrentY = this.playerPos.y - 1;
             // Check above climb position
-            if (this.grid[aboveClimbY]?.[climbX] === 'wall') return;
+            if (this.isSolid(climbX, aboveClimbY)) return;
             if (this.blocks.has(`${climbX},${aboveClimbY}`)) return;
             // Check above current position
-            if (this.grid[aboveCurrentY]?.[this.playerPos.x] === 'wall') return;
+            if (this.isSolid(this.playerPos.x, aboveCurrentY)) return;
             if (this.blocks.has(`${this.playerPos.x},${aboveCurrentY}`)) return;
         }
 
@@ -436,11 +601,11 @@ class LevelEditor {
         if (!this.blocks.has(`${blockX},${blockY}`)) return;
 
         // Check if space above block is clear
-        if (this.grid[blockY - 1]?.[blockX] === 'wall') return;
+        if (this.isSolid(blockX, blockY - 1)) return;
         if (this.blocks.has(`${blockX},${blockY - 1}`)) return;
 
         // Check if space above player is clear
-        if (this.grid[this.playerPos.y - 1]?.[this.playerPos.x] === 'wall') return;
+        if (this.isSolid(this.playerPos.x, this.playerPos.y - 1)) return;
         if (this.blocks.has(`${this.playerPos.x},${this.playerPos.y - 1}`)) return;
 
         this.blocks.delete(`${blockX},${blockY}`);
@@ -457,11 +622,11 @@ class LevelEditor {
         if (frontX < 0 || frontX >= this.width) return;
 
         // If front position is blocked, try to place above it (on top of obstacle)
-        if (this.grid[frontY][frontX] === 'wall' || this.blocks.has(`${frontX},${frontY}`)) {
+        if (this.isSolid(frontX, frontY) || this.blocks.has(`${frontX},${frontY}`)) {
             const aboveY = frontY - 1;
             // Check if space above obstacle is clear
             if (aboveY < 0) return;
-            if (this.grid[aboveY]?.[frontX] === 'wall') return;
+            if (this.isSolid(frontX, aboveY)) return;
             if (this.blocks.has(`${frontX},${aboveY}`)) return;
 
             this.blocks.add(`${frontX},${aboveY}`);
@@ -481,7 +646,7 @@ class LevelEditor {
         while (true) {
             const belowY = this.playerPos.y + 1;
             if (belowY >= this.height) break;
-            if (this.grid[belowY][this.playerPos.x] === 'wall') break;
+            if (this.isSolid(this.playerPos.x, belowY)) break;
             if (this.blocks.has(`${this.playerPos.x},${belowY}`)) break;
             this.playerPos.y = belowY;
         }
@@ -492,7 +657,7 @@ class LevelEditor {
         while (true) {
             const belowY = y + 1;
             if (belowY >= this.height) break;
-            if (this.grid[belowY][x] === 'wall') break;
+            if (this.isSolid(x, belowY)) break;
             if (this.blocks.has(`${x},${belowY}`)) break;
             y = belowY;
         }
@@ -518,12 +683,13 @@ class LevelEditor {
             cell.className = 'cell';
         });
 
-        // Render walls and door from grid
+        // Render terrain, walls and door from grid
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                if (this.grid[y][x] === 'wall' || this.grid[y][x] === 'door') {
+                const cellType = this.grid[y][x];
+                if (cellType === 'wall' || cellType === 'door' || cellType === 'grass' || cellType === 'grass2') {
                     const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-                    cell.classList.add(this.grid[y][x]);
+                    cell.classList.add(cellType);
                 }
             }
         }
@@ -534,6 +700,14 @@ class LevelEditor {
             const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
             if (cell) cell.classList.add('block');
         });
+
+        // Render enemies
+        for (const enemy of this.enemies) {
+            const enemyCell = document.querySelector(`.cell[data-x="${enemy.x}"][data-y="${enemy.y}"]`);
+            if (enemyCell) {
+                enemyCell.classList.add('enemy');
+            }
+        }
 
         // Render player
         const playerCell = document.querySelector(`.cell[data-x="${this.playerPos.x}"][data-y="${this.playerPos.y}"]`);
@@ -573,18 +747,21 @@ class LevelEditor {
         }
 
         const gridStrings = [];
+        const saveCharMap = {
+            'grass': 'G',
+            'grass2': 'g',
+            'wall': '#',
+            'block': 'B',
+            'player': 'P',
+            'door': 'D',
+            'enemy': 'E',
+            'empty': ' '
+        };
         for (let y = 0; y < this.height; y++) {
             let row = '';
             for (let x = 0; x < this.width; x++) {
                 const cell = this.grid[y][x];
-                const charMap = {
-                    'wall': '#',
-                    'block': 'B',
-                    'player': 'P',
-                    'door': 'D',
-                    'empty': ' '
-                };
-                row += charMap[cell] || ' ';
+                row += saveCharMap[cell] || ' ';
             }
             gridStrings.push(row);
         }
@@ -664,11 +841,14 @@ class LevelEditor {
         gridEl.style.width = `${this.width * 24}px`;
 
         this.grid = [];
-        const charMap = {
+        const loadCharMap = {
+            'G': 'grass',
+            'g': 'grass2',
             '#': 'wall',
             'B': 'block',
             'P': 'player',
             'D': 'door',
+            'E': 'enemy',
             ' ': 'empty'
         };
 
@@ -682,7 +862,7 @@ class LevelEditor {
                 cell.dataset.x = x;
                 cell.dataset.y = y;
 
-                const type = charMap[char] || 'empty';
+                const type = loadCharMap[char] || 'empty';
                 row.push(type);
                 if (type !== 'empty') {
                     cell.classList.add(type);
@@ -724,18 +904,21 @@ class LevelEditor {
         const levelName = document.getElementById('levelName').value || 'Unnamed Level';
 
         const gridStrings = [];
+        const exportCharMap = {
+            'grass': 'G',
+            'grass2': 'g',
+            'wall': '#',
+            'block': 'B',
+            'player': 'P',
+            'door': 'D',
+            'enemy': 'E',
+            'empty': ' '
+        };
         for (let y = 0; y < this.height; y++) {
             let row = '';
             for (let x = 0; x < this.width; x++) {
                 const cell = this.grid[y][x];
-                const charMap = {
-                    'wall': '#',
-                    'block': 'B',
-                    'player': 'P',
-                    'door': 'D',
-                    'empty': ' '
-                };
-                row += charMap[cell] || ' ';
+                row += exportCharMap[cell] || ' ';
             }
             gridStrings.push(row);
         }

@@ -12,11 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import com.blockdude2.game.data.GameState
 import com.blockdude2.game.data.Level
+import com.blockdude2.game.data.TerrainType
 import com.blockdude2.game.game.CellInfo
 import com.blockdude2.game.game.Direction
 import com.blockdude2.game.game.GameEngine
@@ -91,6 +90,8 @@ fun GameCanvas(
                     is CellInfo.Wall -> drawWall(cellX, cellY, cellSize)
                     is CellInfo.Block -> drawBlock(cellX, cellY, cellSize)
                     is CellInfo.Door -> drawDoor(cellX, cellY, cellSize)
+                    is CellInfo.Terrain -> drawTerrain(cellX, cellY, cellSize, cellInfo.type)
+                    is CellInfo.Enemy -> drawEnemy(cellX, cellY, cellSize, cellInfo.facing)
                     is CellInfo.Empty -> {} // Already have background
                     is CellInfo.Player -> {} // Draw separately for animation
                 }
@@ -108,7 +109,104 @@ fun GameCanvas(
             val doorY = offsetY + level.doorPosition.y * cellSize
             drawDoorOpen(doorX, doorY, cellSize)
         }
+
+        // Draw game over overlay
+        if (gameState.gameOver) {
+            drawRect(
+                color = Color(0x99000000),
+                topLeft = Offset(offsetX, offsetY),
+                size = Size(cellSize * viewportWidth, cellSize * level.height)
+            )
+        }
     }
+}
+
+private fun DrawScope.drawTerrain(x: Float, y: Float, size: Float, type: TerrainType) {
+    val grassColor = if (type == TerrainType.GRASS) GrassColor else GrassVariantColor
+    val dirtColor = if (type == TerrainType.GRASS) DirtColor else DirtVariantColor
+
+    // Grass top (about 35% of cell)
+    val grassHeight = size * 0.35f
+    drawRect(
+        color = grassColor,
+        topLeft = Offset(x, y),
+        size = Size(size, grassHeight)
+    )
+
+    // Dirt bottom (65% of cell)
+    drawRect(
+        color = dirtColor,
+        topLeft = Offset(x, y + grassHeight),
+        size = Size(size, size - grassHeight)
+    )
+
+    // Grass blade details
+    val bladeColor = if (type == TerrainType.GRASS) Color(0xFF5A9C2A) else Color(0xFF6AAC3A)
+    val bladeWidth = size * 0.08f
+    val bladePositions = if (type == TerrainType.GRASS) listOf(0.2f, 0.5f, 0.8f) else listOf(0.3f, 0.7f)
+
+    for (pos in bladePositions) {
+        drawRect(
+            color = bladeColor,
+            topLeft = Offset(x + size * pos - bladeWidth / 2, y),
+            size = Size(bladeWidth, grassHeight * 0.6f)
+        )
+    }
+}
+
+private fun DrawScope.drawEnemy(x: Float, y: Float, size: Float, facing: Direction) {
+    val margin = size * 0.08f
+
+    // Slug body
+    val bodyX = x + margin
+    val bodyY = y + margin * 2
+    val bodyW = size - margin * 2
+    val bodyH = size - margin * 3
+
+    // Main body (purple slug)
+    drawRoundRect(
+        color = EnemyColor,
+        topLeft = Offset(bodyX, bodyY),
+        size = Size(bodyW, bodyH),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(bodyH / 2, bodyH / 2)
+    )
+
+    // Darker underside
+    drawRoundRect(
+        color = EnemyDarkColor,
+        topLeft = Offset(bodyX, bodyY + bodyH * 0.6f),
+        size = Size(bodyW, bodyH * 0.4f),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(bodyH / 4, bodyH / 4)
+    )
+
+    // Eyes
+    val eyeSize = size * 0.15f
+    val eyeY = bodyY + bodyH * 0.25f
+    val eyeOffset = if (facing == Direction.LEFT) 0.2f else 0.5f
+
+    // Left eye
+    drawCircle(
+        color = Color.White,
+        radius = eyeSize,
+        center = Offset(bodyX + bodyW * eyeOffset, eyeY)
+    )
+    drawCircle(
+        color = Color.Black,
+        radius = eyeSize * 0.5f,
+        center = Offset(bodyX + bodyW * eyeOffset, eyeY)
+    )
+
+    // Right eye
+    drawCircle(
+        color = Color.White,
+        radius = eyeSize,
+        center = Offset(bodyX + bodyW * (eyeOffset + 0.25f), eyeY)
+    )
+    drawCircle(
+        color = Color.Black,
+        radius = eyeSize * 0.5f,
+        center = Offset(bodyX + bodyW * (eyeOffset + 0.25f), eyeY)
+    )
 }
 
 private fun DrawScope.drawWall(x: Float, y: Float, size: Float) {
@@ -125,7 +223,7 @@ private fun DrawScope.drawWall(x: Float, y: Float, size: Float) {
     val mortarColor = Color(0xFF252525)
     val mortarWidth = size * 0.05f
 
-    // Draw horizontal mortar lines (including top and bottom edges for seamless vertical tiling)
+    // Draw horizontal mortar lines
     for (row in 0..4) {
         drawLine(
             color = mortarColor,
@@ -136,7 +234,6 @@ private fun DrawScope.drawWall(x: Float, y: Float, size: Float) {
     }
 
     // Draw vertical mortar lines (staggered pattern)
-    // Row 0 and 2: center line
     drawLine(
         color = mortarColor,
         start = Offset(x + brickWidth, y),
@@ -150,7 +247,6 @@ private fun DrawScope.drawWall(x: Float, y: Float, size: Float) {
         strokeWidth = mortarWidth
     )
 
-    // Row 1 and 3: edge lines (seamless with adjacent tiles)
     drawLine(
         color = mortarColor,
         start = Offset(x, y + brickHeight),
@@ -180,20 +276,17 @@ private fun DrawScope.drawWall(x: Float, y: Float, size: Float) {
 private fun DrawScope.drawBlock(x: Float, y: Float, size: Float) {
     val margin = size * 0.05f
 
-    // Main block
     val blockX = x + margin
     val blockY = y + margin
     val blockW = size - margin * 2
     val blockH = size - margin * 2
 
-    // Flat block face
     drawRect(
         color = BlockColor,
         topLeft = Offset(blockX, blockY),
         size = Size(blockW, blockH)
     )
 
-    // Wood grain lines
     val grainColor = Color(0xFFA07040)
     val grainWidth = size * 0.03f
 
@@ -216,7 +309,6 @@ private fun DrawScope.drawBlock(x: Float, y: Float, size: Float) {
         strokeWidth = grainWidth
     )
 
-    // Thin border
     drawRect(
         color = Color(0xFF805020),
         topLeft = Offset(blockX, blockY),
@@ -228,21 +320,18 @@ private fun DrawScope.drawBlock(x: Float, y: Float, size: Float) {
 private fun DrawScope.drawDoor(x: Float, y: Float, size: Float) {
     val padding = size * 0.1f
 
-    // Door frame
     drawRect(
         color = DoorFrame,
         topLeft = Offset(x + padding, y),
         size = Size(size - padding * 2, size)
     )
 
-    // Door
     drawRect(
         color = DoorColor,
         topLeft = Offset(x + padding * 2, y + padding),
         size = Size(size - padding * 4, size - padding)
     )
 
-    // Door handle
     drawCircle(
         color = Color(0xFF5A9E6A),
         radius = size * 0.08f,
@@ -253,14 +342,12 @@ private fun DrawScope.drawDoor(x: Float, y: Float, size: Float) {
 private fun DrawScope.drawDoorOpen(x: Float, y: Float, size: Float) {
     val padding = size * 0.1f
 
-    // Door frame
     drawRect(
         color = DoorFrame,
         topLeft = Offset(x + padding, y),
         size = Size(size - padding * 2, size)
     )
 
-    // Open door (dark inside)
     drawRect(
         color = Color(0xFF1A3A1A),
         topLeft = Offset(x + padding * 2, y + padding),
@@ -295,7 +382,6 @@ private fun DrawScope.drawPlayer(x: Float, y: Float, size: Float, facing: Direct
     val pixelSize = size / 8f
     val sprite = if (facing == Direction.LEFT) SPRITE_LEFT else SPRITE_RIGHT
 
-    // Held block (drawn first, behind player, above head)
     if (holdingBlock) {
         val blockSize = size * 0.85f
         val blockX = x + size / 2 - blockSize / 2
@@ -303,7 +389,6 @@ private fun DrawScope.drawPlayer(x: Float, y: Float, size: Float, facing: Direct
         drawBlock(blockX, blockY, blockSize)
     }
 
-    // Draw player sprite pixel by pixel
     for (row in 0 until 8) {
         for (col in 0 until 8) {
             if (sprite[row][col] == 1) {

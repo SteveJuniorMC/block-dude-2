@@ -168,6 +168,10 @@ h1 {
     border-radius: 4px;
 }
 
+.grass-icon {
+    background: linear-gradient(180deg, #4a7c23 0%, #3d6b1e 40%, #8b5a2b 40%, #6b4423 100%);
+}
+
 .wall-icon {
     background: linear-gradient(135deg, #6b6b6b 25%, #7a7a7a 25%, #7a7a7a 50%, #6b6b6b 50%, #6b6b6b 75%, #7a7a7a 75%);
     background-size: 8px 8px;
@@ -186,6 +190,11 @@ h1 {
 .door-icon {
     background: linear-gradient(180deg, #2ecc71, #1e8449);
     border-radius: 3px 3px 0 0;
+}
+
+.enemy-icon {
+    background: linear-gradient(180deg, #9b59b6, #6c3483);
+    border-radius: 50% 50% 40% 40%;
 }
 
 .erase-icon {
@@ -221,6 +230,14 @@ h1 {
     background: #4d96ff;
 }
 
+.btn-pan {
+    background: #9b59b6;
+}
+
+.btn-pan.active {
+    background: #e74c3c;
+}
+
 .editor-area {
     flex: 1;
     display: flex;
@@ -229,11 +246,17 @@ h1 {
     min-width: 0;
 }
 
+.editor-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
 .scroll-info {
     background: #0f3460;
     padding: 8px 16px;
     border-radius: 5px;
-    margin-bottom: 10px;
     font-size: 0.85rem;
     color: #4ecca3;
 }
@@ -264,6 +287,16 @@ h1 {
 
 .cell:hover {
     opacity: 0.8;
+}
+
+.cell.grass {
+    background: linear-gradient(180deg, #4a7c23 0%, #3d6b1e 35%, #8b5a2b 35%, #6b4423 100%);
+    box-shadow: inset 0 2px 2px rgba(100, 200, 50, 0.3);
+}
+
+.cell.grass2 {
+    background: linear-gradient(180deg, #5a8c2a 0%, #4a7c23 30%, #7a4a1b 30%, #5a3413 100%);
+    box-shadow: inset 0 2px 2px rgba(120, 220, 60, 0.3);
 }
 
 .cell.wall {
@@ -342,6 +375,36 @@ h1 {
     background: #ffd700;
     border-radius: 50%;
     transform: translateY(-50%);
+}
+
+.cell.enemy {
+    background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 50%, #6c3483 100%);
+    border-radius: 50% 50% 40% 40%;
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3);
+}
+
+.cell.enemy::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 5px;
+    width: 4px;
+    height: 4px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 10px 0 0 #fff;
+}
+
+.cell.enemy::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 6px;
+    width: 2px;
+    height: 2px;
+    background: #1a1a2e;
+    border-radius: 50%;
+    box-shadow: 10px 0 0 #1a1a2e;
 }
 
 .play-controls {

@@ -34,8 +34,26 @@
 
         <div class="main-area">
             <div class="tools-palette">
+                <h3>File</h3>
+                <button id="saveBtn" class="btn btn-action btn-save">Save</button>
+                <button id="loadBtn" class="btn btn-action">Load</button>
+                <button id="exportBtn" class="btn btn-action">Export</button>
+
+                <hr>
+
+                <h3>Actions</h3>
+                <button id="validateBtn" class="btn btn-action">Validate</button>
+                <button id="playBtn" class="btn btn-action btn-play">Play Test</button>
+                <button id="stopBtn" class="btn btn-action btn-stop" style="display:none;">Stop</button>
+
+                <hr>
+
                 <h3>Tools</h3>
-                <button class="tool-btn active" data-tool="wall" title="Wall (W)">
+                <button class="tool-btn active" data-tool="grass" title="Grass (G)">
+                    <div class="tool-icon grass-icon"></div>
+                    <span>Grass</span>
+                </button>
+                <button class="tool-btn" data-tool="wall" title="Wall (W)">
                     <div class="tool-icon wall-icon"></div>
                     <span>Wall</span>
                 </button>
@@ -51,24 +69,14 @@
                     <div class="tool-icon door-icon"></div>
                     <span>Door</span>
                 </button>
+                <button class="tool-btn" data-tool="enemy" title="Enemy (S)">
+                    <div class="tool-icon enemy-icon"></div>
+                    <span>Slug</span>
+                </button>
                 <button class="tool-btn" data-tool="erase" title="Erase (E)">
                     <div class="tool-icon erase-icon"></div>
                     <span>Erase</span>
                 </button>
-
-                <hr>
-
-                <h3>Actions</h3>
-                <button id="validateBtn" class="btn btn-action">Validate</button>
-                <button id="playBtn" class="btn btn-action btn-play">Play Test</button>
-                <button id="stopBtn" class="btn btn-action btn-stop" style="display:none;">Stop</button>
-
-                <hr>
-
-                <h3>File</h3>
-                <button id="saveBtn" class="btn btn-action btn-save">Save</button>
-                <button id="loadBtn" class="btn btn-action">Load</button>
-                <button id="exportBtn" class="btn btn-action">Export</button>
 
                 <hr>
 
@@ -79,8 +87,8 @@
             </div>
 
             <div class="editor-area">
-                <div class="scroll-info">
-                    <span id="scrollInfo">Scroll horizontally to see full level</span>
+                <div class="editor-controls">
+                    <span id="scrollInfo" class="scroll-info">Swipe to scroll, tap to place</span>
                 </div>
                 <div id="gridContainer" class="grid-container">
                     <div id="grid" class="grid"></div>

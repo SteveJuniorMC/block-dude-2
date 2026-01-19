@@ -43,28 +43,28 @@ object LevelRepository {
     }
 
     fun getDefaultLevels(): List<Level> = listOf(
-        // Sample scrolling level - wider than viewport
-        Level.fromString(
+        // Level 1 - intro with enemy
+        Level.fromGrid(
             id = 1,
-            name = "Sample Level",
-            levelString = """
-                ################################
-
-
-
-
-
-
-
-
-
-
-
-
-                    #      #      #      #   D
-                 B P#B     #  B   #  B   #  ##
-                ################################
-            """
+            name = "First Steps",
+            grid = listOf(
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                 B              ",
+                "         #     ####            D",
+                "       ###                  ####",
+                "   B P ###B  B#    #  E  B  ####",
+                "GgggggGgGGGgGGGgGGGGGgggGGGGggGG"
+            )
         )
     )
 }
