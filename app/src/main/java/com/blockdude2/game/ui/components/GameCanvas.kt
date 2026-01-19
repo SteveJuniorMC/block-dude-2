@@ -275,14 +275,6 @@ fun GameCanvas(
             drawDoorOpen(doorX, doorY, cellSize)
         }
 
-        // Draw game over overlay
-        if (gameState.gameOver) {
-            drawRect(
-                color = Color(0x99000000),
-                topLeft = Offset(0f, offsetY),
-                size = Size(size.width, arenaHeight)
-            )
-        }
     }
 }
 
