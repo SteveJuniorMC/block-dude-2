@@ -65,10 +65,8 @@ fun GameCanvas(
     }
 
     LaunchedEffect(gameState.playerPosition) {
-        animatedViewportOffset.animateTo(
-            targetValue = gameEngine.getViewportOffset(gameState).toFloat(),
-            animationSpec = tween(150)
-        )
+        // Instant viewport update - no animation delay
+        animatedViewportOffset.snapTo(gameEngine.getViewportOffset(gameState).toFloat())
     }
 
     // Continuous enemy movement - runs as long as game is active
@@ -128,61 +126,65 @@ fun GameCanvas(
             size = Size(cellSize * viewportWidth, cellSize * level.height)
         )
 
-        // Render extra cells on each side to prevent gaps during scroll animation
-        val viewportStartFloat = animatedViewportOffset.value
-        val viewportStartInt = kotlin.math.floor(viewportStartFloat).toInt()
-        val viewportEndInt = kotlin.math.ceil(viewportStartFloat).toInt() + viewportWidth + 1
+        // Clip all drawing to the arena area
+        clipRect(
+            left = offsetX,
+            top = offsetY,
+            right = offsetX + cellSize * viewportWidth,
+            bottom = offsetY + cellSize * level.height
+        ) {
+            val viewportStartFloat = animatedViewportOffset.value
+            val viewportStartInt = viewportStartFloat.toInt()
+            val viewportEndInt = viewportStartInt + viewportWidth + 1
 
-        // Draw all visible cells (within extended viewport)
-        for (y in 0 until level.height) {
-            for (x in maxOf(0, viewportStartInt) until minOf(viewportEndInt, level.width)) {
-                val cellInfo = gameEngine.getCellAt(x, y, gameState)
-                val cellX = offsetX + (x - viewportStartFloat) * cellSize
-                val cellY = offsetY + y * cellSize
+            // Draw all visible cells
+            for (y in 0 until level.height) {
+                for (x in maxOf(0, viewportStartInt) until minOf(viewportEndInt, level.width)) {
+                    val cellInfo = gameEngine.getCellAt(x, y, gameState)
+                    val cellX = offsetX + (x - viewportStartFloat) * cellSize
+                    val cellY = offsetY + y * cellSize
 
-                // Skip if outside visible area
-                if (cellX + cellSize < offsetX || cellX > offsetX + viewportWidth * cellSize) continue
-
-                when (cellInfo) {
-                    is CellInfo.Wall -> drawWall(cellX, cellY, cellSize)
-                    is CellInfo.Block -> drawBlock(cellX, cellY, cellSize)
-                    is CellInfo.Door -> drawDoor(cellX, cellY, cellSize)
-                    is CellInfo.Terrain -> drawTerrain(cellX, cellY, cellSize, cellInfo.type)
-                    is CellInfo.Enemy -> {} // Draw separately for animation
-                    is CellInfo.Empty -> {} // Already have background
-                    is CellInfo.Player -> {} // Draw separately for animation
+                    when (cellInfo) {
+                        is CellInfo.Wall -> drawWall(cellX, cellY, cellSize)
+                        is CellInfo.Block -> drawBlock(cellX, cellY, cellSize)
+                        is CellInfo.Door -> drawDoor(cellX, cellY, cellSize)
+                        is CellInfo.Terrain -> drawTerrain(cellX, cellY, cellSize, cellInfo.type)
+                        is CellInfo.Enemy -> {} // Draw separately for animation
+                        is CellInfo.Empty -> {} // Already have background
+                        is CellInfo.Player -> {} // Draw separately for animation
+                    }
                 }
             }
-        }
 
-        // Draw enemies with smooth animation
-        gameState.enemies.forEachIndexed { index, enemy ->
-            if (index < animatedEnemies.size) {
-                val enemyX = offsetX + (animatedEnemies[index].x.value - viewportStartFloat) * cellSize
-                val enemyY = offsetY + animatedEnemies[index].y.value * cellSize
-                drawEnemy(enemyX, enemyY, cellSize, enemy.facing)
+            // Draw enemies with smooth animation
+            gameState.enemies.forEachIndexed { index, enemy ->
+                if (index < animatedEnemies.size) {
+                    val enemyX = offsetX + (animatedEnemies[index].x.value - viewportStartFloat) * cellSize
+                    val enemyY = offsetY + animatedEnemies[index].y.value * cellSize
+                    drawEnemy(enemyX, enemyY, cellSize, enemy.facing)
+                }
             }
-        }
 
-        // Draw player with animation (adjusted for viewport)
-        val playerX = offsetX + (animatedPlayerX.value - viewportStartFloat) * cellSize
-        val playerY = offsetY + animatedPlayerY.value * cellSize
-        drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
+            // Draw player with animation (adjusted for viewport)
+            val playerX = offsetX + (animatedPlayerX.value - viewportStartFloat) * cellSize
+            val playerY = offsetY + animatedPlayerY.value * cellSize
+            drawPlayer(playerX, playerY, cellSize, gameState.playerFacing, gameState.holdingBlock)
 
-        // Draw door on top if player is at door (for win effect)
-        if (gameState.levelCompleted) {
-            val doorX = offsetX + (level.doorPosition.x - viewportStartFloat) * cellSize
-            val doorY = offsetY + level.doorPosition.y * cellSize
-            drawDoorOpen(doorX, doorY, cellSize)
-        }
+            // Draw door on top if player is at door (for win effect)
+            if (gameState.levelCompleted) {
+                val doorX = offsetX + (level.doorPosition.x - viewportStartFloat) * cellSize
+                val doorY = offsetY + level.doorPosition.y * cellSize
+                drawDoorOpen(doorX, doorY, cellSize)
+            }
 
-        // Draw game over overlay
-        if (gameState.gameOver) {
-            drawRect(
-                color = Color(0x99000000),
-                topLeft = Offset(offsetX, offsetY),
-                size = Size(cellSize * viewportWidth, cellSize * level.height)
-            )
+            // Draw game over overlay
+            if (gameState.gameOver) {
+                drawRect(
+                    color = Color(0x99000000),
+                    topLeft = Offset(offsetX, offsetY),
+                    size = Size(cellSize * viewportWidth, cellSize * level.height)
+                )
+            }
         }
     }
 }
