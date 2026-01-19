@@ -78,6 +78,29 @@ object LevelRepository {
                 "                                ",
                 "                                ",
                 "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                            #   ",
+                " P     #                  # ##  ",
+                "BB     #       B         ## ### ",
+                "### BB #    E B#      E ### ###D",
+                "GGGGgGGGgGGGgGggGGGGGgGgGgGgGGGg"
+            )
+        ),
+        // Level 3
+        Level.fromGrid(
+            id = 3,
+            name = "Level 3",
+            grid = listOf(
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
+                "                                ",
                 "                              E ",
                 "                          ######",
                 " E                              ",
